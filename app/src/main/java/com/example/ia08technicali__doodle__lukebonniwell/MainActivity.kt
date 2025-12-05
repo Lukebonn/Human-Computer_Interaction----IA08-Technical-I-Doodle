@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import com.example.ia08technicali__doodle__lukebonniwell.ui.theme.IA08TechnicalIDoodleLukeBonniwellTheme
 
 class MainActivity : ComponentActivity() {
@@ -31,44 +33,51 @@ class MainActivity : ComponentActivity() {
             IA08TechnicalIDoodleLukeBonniwellTheme {
                 var brushSize by remember { mutableStateOf(10f) }
                 var brushColor by remember { mutableStateOf(Color.Black) }
-                var ClearCanvas by remember { mutableStateOf(false) }
+                var clearCanvas by remember { mutableStateOf(false) }
+                var backgroundColor by remember { mutableStateOf(Color.White)}
 
                 Scaffold { innerPadding ->
                     DrawingCanvas(
                         modifier = Modifier,
                         brushSize = brushSize,
                         brushColor = brushColor,
-                        clearCanvas = ClearCanvas
+                        clearCanvas = clearCanvas,
+                        onClear = { clearCanvas = false },
+                        backgroundColor = backgroundColor
                     )
-
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
                     ) {
-                        FilledButtonExample(onClick = {
-                            println("Button Clicked!")
+                        Column(
+
+                        ) {
+                            Text(text = "Brush Size: ${brushSize.toInt()}")
+                            Row {
+                                IncreaseBrushSize(onClick = {
+                                    brushSize += 5f
+                                })
+                                DecreaseBrushSize(onClick = {
+                                    brushSize -= 5f
+                                })
+                            }
+                        }
+                        ClearCanvasButton(onClick = {
+                            clearCanvas = true;
                         })
-                        IncreaseBrushSize(onClick = {
-                            brushSize += 5f
-                        })
-                        DecreaseBrushSize(onClick = {
-                            brushSize -= 5f
-                        })
+                        BrushColorDropdown(
+//                            selectedColor = brushColor,
+                            onColorSelected = { brushColor = it }
+                        )
+                        BackgroundColorDropdown(
+                            backgroundSelectedColor = backgroundColor,
+                            onColorSelected = { backgroundColor = it }
+                        )
                     }
                 }
             }
         }
-    }
-}
-@Composable
-fun FilledButtonExample(onClick: () -> Unit) {
-    Button(onClick = {
-        println("button Clicked!")
-    }) {
-        Text(
-            "Filled"
-        )
     }
 }
 @Composable
@@ -78,7 +87,7 @@ fun IncreaseBrushSize(onClick: () -> Unit) {
         onClick()
     }) {
         Text(
-            "Increase"
+            "+"
         )
     }
 }
@@ -89,10 +98,96 @@ fun DecreaseBrushSize(onClick: () -> Unit) {
         onClick()
     }) {
         Text(
-            "Decrease"
+            "-"
         )
     }
 }
+@Composable
+fun ClearCanvasButton(onClick: () -> Unit) {
+    Button(onClick = {
+        println("Clear Clicked!")
+        onClick()
+    }) {
+        Text(
+            "Clear"
+        )
+    }
+}
+
+val brushColors = listOf(
+    Color.Black,
+    Color.Red,
+    Color.Green,
+    Color.Blue,
+    Color.Yellow
+)
+
+val brushColorNames = listOf(
+    "Black",
+    "Red",
+    "Green",
+    "Blue",
+    "Yellow"
+)
+@Composable
+fun BrushColorDropdown(
+//    selectedColor: Color,
+    onColorSelected: (Color) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var selectedIndex by remember { mutableStateOf(0) }
+
+    Column {
+        Button(onClick={expanded = true }) {
+            Text(text = "Color")
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            brushColors.forEachIndexed { index, color ->
+                DropdownMenuItem(
+                    text = { Text(brushColorNames[index]) },
+                    onClick = {
+                        selectedIndex = index
+                        onColorSelected(color)
+                        expanded = false;
+                    }
+                )
+            }
+        }
+    }
+}
+@Composable
+fun BackgroundColorDropdown(
+    backgroundSelectedColor: Color,
+    onColorSelected: (Color) -> Unit
+) {
+    var dropdownMenu by remember { mutableStateOf(false) }
+    var selectedIndex by remember { mutableStateOf(0) }
+
+    Column {
+        Button(onClick = { dropdownMenu = true }) {
+            Text(text = "Background")
+        }
+        DropdownMenu(
+            expanded = dropdownMenu,
+            onDismissRequest = { dropdownMenu = false }
+        ) {
+            brushColors.forEachIndexed { index, color ->
+                DropdownMenuItem(
+                    text = { Text(brushColorNames[index]) },
+                    onClick = {
+                        selectedIndex = index
+                        onColorSelected(color)
+                        dropdownMenu = false
+                    }
+                )
+            }
+        }
+    }
+}
+
 
 data class DrawPath(
     val points: SnapshotStateList<Offset> = mutableStateListOf(),
@@ -100,11 +195,16 @@ data class DrawPath(
     val color: Color
 )
 @Composable
-fun DrawingCanvas(modifier: Modifier = Modifier, brushSize: Float, brushColor: Color, clearCanvas: Boolean) {
+fun DrawingCanvas(modifier: Modifier = Modifier, brushSize: Float, brushColor: Color, clearCanvas: Boolean, onClear: () -> Unit, backgroundColor: Color) {
     val paths = remember { mutableStateListOf<DrawPath>() }
     var currentPath by remember { mutableStateOf<DrawPath?>(null) }
     val brushSizeState by rememberUpdatedState(brushSize)
     val brushColorState by rememberUpdatedState(brushColor)
+
+    if (clearCanvas) {
+        paths.clear()
+        onClear()
+    }
 
     Canvas(
         modifier = Modifier
@@ -129,6 +229,7 @@ fun DrawingCanvas(modifier: Modifier = Modifier, brushSize: Float, brushColor: C
             )
         }
     ) {
+        drawRect(color = backgroundColor);
         paths.forEach { path ->
             for (i in 0 until path.points.size - 1) {
                 drawLine(
