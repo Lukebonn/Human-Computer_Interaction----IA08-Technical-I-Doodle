@@ -5,20 +5,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.Canvas
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material3.Button
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.input.pointer.pointerInput
 import com.example.ia08technicali__doodle__lukebonniwell.ui.theme.IA08TechnicalIDoodleLukeBonniwellTheme
 
@@ -28,11 +29,33 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             IA08TechnicalIDoodleLukeBonniwellTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    DrawingCanvas()
-                    FilledButtonExample(onClick = {
-                        println("Button Clicked!")
-                    })
+                var brushSize by remember { mutableStateOf(10f) }
+                var brushColor by remember { mutableStateOf(Color.Black) }
+                var ClearCanvas by remember { mutableStateOf(false) }
+
+                Scaffold { innerPadding ->
+                    DrawingCanvas(
+                        modifier = Modifier,
+                        brushSize = brushSize,
+                        brushColor = brushColor,
+                        clearCanvas = ClearCanvas
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        FilledButtonExample(onClick = {
+                            println("Button Clicked!")
+                        })
+                        IncreaseBrushSize(onClick = {
+                            brushSize += 5f
+                        })
+                        DecreaseBrushSize(onClick = {
+                            brushSize -= 5f
+                        })
+                    }
                 }
             }
         }
@@ -49,42 +72,72 @@ fun FilledButtonExample(onClick: () -> Unit) {
     }
 }
 @Composable
-fun DrawingCanvas() {
-    val paths = remember { mutableStateListOf<MutableList<Offset>>() }
-    var currentPath = remember { mutableStateListOf<Offset>() }
+fun IncreaseBrushSize(onClick: () -> Unit) {
+    Button(onClick = {
+        println("Increase Clicked!")
+        onClick()
+    }) {
+        Text(
+            "Increase"
+        )
+    }
+}
+@Composable
+fun DecreaseBrushSize(onClick: () -> Unit) {
+    Button(onClick = {
+        println("Decrease Clicked!")
+        onClick()
+    }) {
+        Text(
+            "Decrease"
+        )
+    }
+}
 
-    Canvas(modifier = Modifier
+data class DrawPath(
+    val points: SnapshotStateList<Offset> = mutableStateListOf(),
+    val size: Float,
+    val color: Color
+)
+@Composable
+fun DrawingCanvas(modifier: Modifier = Modifier, brushSize: Float, brushColor: Color, clearCanvas: Boolean) {
+    val paths = remember { mutableStateListOf<DrawPath>() }
+    var currentPath by remember { mutableStateOf<DrawPath?>(null) }
+    val brushSizeState by rememberUpdatedState(brushSize)
+    val brushColorState by rememberUpdatedState(brushColor)
+
+    Canvas(
+        modifier = Modifier
         .fillMaxSize()
         .pointerInput(Unit) {
             detectDragGestures(
                 onDragStart = { offset ->
-                    currentPath = mutableStateListOf<Offset>()
-                    paths.add(currentPath)
+                    val newPath = DrawPath(
+                        points = mutableStateListOf(),
+                        size = brushSizeState,
+                        color = brushColorState
+                    )
+                    currentPath = newPath
+                    paths.add(newPath)
                 },
                 onDrag = { change, _ ->
-                    currentPath.add(change.position)
+                    currentPath?.points?.add(change.position)
+                },
+                onDragEnd = {
+                    currentPath = null
                 }
             )
         }
     ) {
         paths.forEach { path ->
-            for (i in 0 until path.size - 1) {
+            for (i in 0 until path.points.size - 1) {
                 drawLine(
-                    start = path[i],
-                    end = path[i + 1],
-                    strokeWidth = 10f,
-                    color = Color.Black
+                    start = path.points[i],
+                    end = path.points[i + 1],
+                    strokeWidth = path.size,
+                    color = path.color
                 )
             }
         }
     }
 }
-
-
-//@Preview(showBackground = true)
-//@Composable
-//fun GreetingPreview() {
-//    IA08TechnicalIDoodleLukeBonniwellTheme {
-//        Greeting("Android")
-//    }
-//}
